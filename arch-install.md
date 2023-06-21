@@ -14,6 +14,12 @@ passwd
 systemctl status sshd
 ```
 
+## (Optional) Delete old FS
+```sh
+wipefs -af $disk
+sgdisk --zap-all --clear $disk
+partprobe $disk
+```
 ## Change to optimal LBA format for disk
 ```sh
 nvme id-ns -H /dev/nvme0n1 | grep "Relative Performance"
@@ -22,7 +28,7 @@ nvme format --lbaf=1 /dev/nvme0n1
 
 ## Partition the disks:
 
-I'm using a 1000G nvme drive. Only using 600G for the root, since I plan to use the rest for a gaming VM later.
+I'm using a fresh 1000G nvme drive. Only using 600G for the root, since I plan to use the rest for a gaming VM later.
 
 | Size | Type    | Partition |
 |------|---------|-----------|
@@ -54,6 +60,9 @@ dd bs=4096 count=1 if=/dev/random of=root_keyfile.bin iflag=fullblock
 #### Do the luks and mkfs steps
 ```sh
 cryptsetup luksFormat --type luks2 /dev/nvme0n1p3 root_keyfile.bin
+# Adding a backup pass phrase. This will be in slot 1
+cryptsetup luksAddKey --key-file=/root_keyfile.bin /dev/nvme0n1p3
+
 cryptsetup open --key-file=root_keyfile.bin /dev/nvme0n1p3 root_crypt
 mkfs.btrfs -L root /dev/mapper/root_crypt
 ```
@@ -70,13 +79,14 @@ umount /mnt
 
 #### Mount the top subvolumes:
 ```sh
-mount -o compress=zstd,subvol=@ /dev/mapper/root_crypt /mnt
+export sv_opts="noatime,compress=zstd:1,space_cache=v2"
+mount -o $(sv_opts),subvol=@ /dev/mapper/root_crypt /mnt
 mkdir /mnt/home
-mount -o compress=zstd,subvol=@home /dev/mapper/root_crypt /mnt/home
+mount -o $(sv_opts),subvol=@home /dev/mapper/root_crypt /mnt/home
 mkdir /mnt/.snapshots
-mount -o compress=zstd,subvol=@snapshots /dev/mapper/root_crypt /mnt/.snapshots
+mount -o $(sv_opts),subvol=@snapshots /dev/mapper/root_crypt /mnt/.snapshots
 mkdir -p /mnt/var/log
-mount -o compress=zstd,subvol=@var_log /dev/mapper/root_crypt /mnt/var/log
+mount -o $(sv_opts),subvol=@var_log /dev/mapper/root_crypt /mnt/var/log
 ```
 
 ### Mount /esp and /boot before generating fstab
@@ -90,14 +100,14 @@ mount /dev/mapper/boot_crypt /mnt/boot
 
 ## Generate fstab
 ```sh
-genfstab -U /mnt >> /mnt/etc/fstab
+genfstab -U /mnt > /mnt/etc/fstab
 cat /mnt/etc/fstab # verify and edit the entries if needed
 ```
 
-## Pacstrap on mnt:
+## Pacstrap on /mnt
 ```sh
 pacstrap /mnt base linux linux-firmware btrfs-progs
-pacstrap /mnt man-db man-pages bash-completion amd-ucode nano
+pacstrap /mnt man-db man-pages amd-ucode nano
 ```
 
 ## Chroot into the new install
@@ -118,31 +128,27 @@ echo '127.0.0.1	localhost
 127.0.1.1	cardinal.localdomain	cardinal' > /etc/hosts
 ```
 
-## enable this ig? probably don't need to _rn_
-
-```sh
-systemctl enable systemd-networkd systemd-resolved
-```
-
 ## Set root password
 ```sh
 passwd
 ```
 
 ## Generate key for bootloader to decrypt boot partition automatically
-```sh
-dd bs=4096 count=1 if=/dev/random of=/crypto_keyfile.bin iflag=fullblock
-chmod 600 /crypto_keyfile.bin
-chmod 600 /boot/initramfs-linux*
-cryptsetup luksAddKey /dev/nvme0n1p2 /crypto_keyfile.bin
 
-# Add a pass phrase now just in case I can't boot with key
-cryptsetup luksAddKey ==key-file=/boot/root_keyfile.bin /dev/nvme0n1p3
+In this setup, this is for the issue where user will be prompted for the pass phrase for /boot a second time, since all devices are effectively unmounted when in initramfs, causing everything to be remounted later and hence the prompts.
+
+The bootloader will still prompt for the passphrase once, before reaching the GRUB menu.
+
+```sh
+dd bs=4096 count=1 if=/dev/random of=/boot_keyfile.bin iflag=fullblock
+chmod 600 /boot_keyfile.bin
+chmod 600 /boot/initramfs-linux*
+cryptsetup luksAddKey /dev/nvme0n1p2 /boot_keyfile.bin
 ```
 
-## Setup initramfs
+## Setting up initramfs
 
-This will be run by the bootloader to then open and switch to the real root.
+This will be used by the kernel to setup the temp ramfs, which can then switch to the real root.
 
 ```sh
 nano /etc/mkinitcpio.conf
@@ -151,7 +157,7 @@ nano /etc/mkinitcpio.conf
 ### Things to edit in the mkinitcpio.conf
 ```sh
 BINARIES=(/usr/bin/btrfs)
-FILES=(/crypto_keyfile.bin)
+FILES=(/root_keyfile.bin)
 # Look into alternate orderings from community
 HOOKS=(base udev keyboard autodetect keymap consolefont modconf block encrypt filesystems fsck)
 ```
@@ -171,12 +177,6 @@ nano /etc/default/grub
 grub-mkconfig -o /boot/grub/grub.cfg
 grub-install --target=x86_64-efi --efi-directory=/esp --bootloader-id=ARCH-GRUB
 ```
-
-```sh
-uuid=$( blkid -o value /dev/nvme0n1 | head -n 1 )
-```
-
-
 
 # Post install TODO
 - Secure boot w/ TPM: https://wiki.archlinux.org/title/Unified_Extensible_Firmware_Interface/Secure_Boot
