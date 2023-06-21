@@ -14,7 +14,10 @@ passwd
 systemctl status sshd
 ```
 
-## (Optional) Delete old FS
+## Delete old FS
+
+If the drive isn't completely fresh. This is a single drive, arch only install.
+
 ```sh
 wipefs -af $disk
 sgdisk --zap-all --clear $disk
@@ -37,8 +40,8 @@ I'm using a fresh 1000G nvme drive. Only using 600G for the root, since I plan t
 | 600G | btrfs   | /         |
 
 ```sh
-disk /dev/nvme0n1
-mkfs.fat /dev/nvme0n1p1 # Create FS for EFI
+fdisk /dev/nvme0n1
+mkfs.fat -n esp /dev/nvme0n1p1 # Create FS for EFI
 ```
 
 ## Create LUKS volumes and mkfs inside them
@@ -46,7 +49,7 @@ mkfs.fat /dev/nvme0n1p1 # Create FS for EFI
 ### For the boot partition:
 ```sh
 cryptsetup luksFormat --type luks1 /dev/nvme0n1p2
-cryptsetup open /dev/nvmeon1p2 boot_crypt
+cryptsetup open /dev/nvme0n1p2 boot_crypt
 mkfs.ext4 -L boot /dev/mapper/boot_crypt
 ```
 
@@ -58,10 +61,12 @@ dd bs=4096 count=1 if=/dev/random of=root_keyfile.bin iflag=fullblock
 ```
 
 #### Do the luks and mkfs steps
+
+Letting the keyfile take the first key slot, this way the normal flow is faster.
 ```sh
 cryptsetup luksFormat --type luks2 /dev/nvme0n1p3 root_keyfile.bin
 # Adding a backup pass phrase. This will be in slot 1
-cryptsetup luksAddKey --key-file=/root_keyfile.bin /dev/nvme0n1p3
+cryptsetup luksAddKey --key-file=root_keyfile.bin /dev/nvme0n1p3
 
 cryptsetup open --key-file=root_keyfile.bin /dev/nvme0n1p3 root_crypt
 mkfs.btrfs -L root /dev/mapper/root_crypt
@@ -106,8 +111,7 @@ cat /mnt/etc/fstab # verify and edit the entries if needed
 
 ## Pacstrap on /mnt
 ```sh
-pacstrap /mnt base linux linux-firmware btrfs-progs
-pacstrap /mnt man-db man-pages amd-ucode nano
+pacstrap /mnt base linux linux-firmware btrfs-progs cryptsetup networkmanager man-db man-pages amd-ucode nano reflector
 ```
 
 ## Chroot into the new install
@@ -158,7 +162,6 @@ nano /etc/mkinitcpio.conf
 ```sh
 BINARIES=(/usr/bin/btrfs)
 FILES=(/root_keyfile.bin)
-# Look into alternate orderings from community
 HOOKS=(base udev keyboard autodetect keymap consolefont modconf block encrypt filesystems fsck)
 ```
 
@@ -171,19 +174,52 @@ mkinitcpio -P
 # Install grub
 pacman -S grub efibootmgr
 
-# Set the crypto disk option to 'y' and also edit the kernel parameters
+lsblk -f
+
+# TODO add resume option
+# GRUB_ENABLE_CRYPTODISK=y
+# GRUB_PRELOAD_MODULES="part_gpt part_msdos luks" # add luks
+# GRUB_CMDLINE_LINUX_DEFAULT="cryptdevice=LABEL=root:root_crypt:allow-discards cryptkey=rootfs:/root_keyfile.bin"
 nano /etc/default/grub
 
 grub-mkconfig -o /boot/grub/grub.cfg
 grub-install --target=x86_64-efi --efi-directory=/esp --bootloader-id=ARCH-GRUB
 ```
 
+
+
+## Swapfile TODO
+```sh
+
+```
+
+## Install DE and related desktop software TODO
+```sh
+pacman -S plasma
+systemctl enable NetworkManager
+
+
+
+```
+
+## Add normal user
+```sh
+useradd -m -G wheel -s /bin/bash dem1se
+passwd dem1se
+```
+
+## Reboot into install
+```sh
+reboot
+```
+
+# After the install
+TODO
+
 # Post install TODO
 - Secure boot w/ TPM: https://wiki.archlinux.org/title/Unified_Extensible_Firmware_Interface/Secure_Boot
 
 - Suspend Support: https://wiki.archlinux.org/title/Power_management/Suspend_and_hibernate#Hibernation
-
-
 
 # References
 
