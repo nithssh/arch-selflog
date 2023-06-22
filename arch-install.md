@@ -81,7 +81,6 @@ btrfs subvolume create /mnt/@          # to be mounted at /
 btrfs subvolume create /mnt/@home      # to be mounted at /home
 btrfs subvolume create /mnt/@snapshots # to be mounted at /.snapshots
 btrfs subvolume create /mnt/@var_log   # to be mounted at /var/log
-btrfs subvolume create /mnt/@swap
 umount /mnt
 ```
 
@@ -100,8 +99,7 @@ mount -o $sv_opts,subvol=@snapshots /dev/mapper/root_crypt /mnt/.snapshots
 mkdir -p /mnt/var/log
 mount -o $sv_opts,subvol=@var_log /dev/mapper/root_crypt /mnt/var/log
 
-mkdir /mnt/swap
-mount -o subvol=@swap /dev/mapper/root_crypt /mnt/swap
+
 ```
 
 #### Create exclusion subvolumes
@@ -223,10 +221,27 @@ grub-mkconfig -o /boot/grub/grub.cfg
 grub-install --target=x86_64-efi --efi-directory=/esp --bootloader-id=ARCH-GRUB
 ```
 
-## Make and turn on the swapfile
+## Setup Swapfile
 ```sh
+btrfs subvolume create /@swap
+mkdir /mnt/swap
+mount -o subvol=@swap /dev/mapper/root_crypt /mnt/swap
 btrfs filesystem mkswapfile --size 8G /swap/swapfile
 swapon /swap/swapfile
+echo "swap/swapfile none swap sw 0 0" >> /etc/fstab
+```
+
+### (Optional) Enable Hibernation into swapfile
+```sh
+btrfs inspect-internal map-swapfile -r /swap/swapfile
+
+# Add `resume` to HOOKS at: HOOKS=( ...filesystems resume fsck)
+nano /etc/mkinitcpio.conf
+mkinitcpio -P
+
+nano /etc/default/grub
+# add resume=UUID=swap_device_uuid and resume_offset=swap_file_offset, that you found in the first line above
+grub-mkconfig -o /boot/grub/grub.cfg
 ```
 
 ## Install DE and related desktop software TODO
@@ -249,19 +264,25 @@ passwd dem1se
 reboot
 ```
 
-# After the install
-TODO
+# Desktop Setup After Install
+
+*See arch-customize.md*
+
 
 # Post install TODO
-- Secure boot w/ TPM: https://wiki.archlinux.org/title/Unified_Extensible_Firmware_Interface/Secure_Boot
+- Snapper
 
 - Suspend Support: https://wiki.archlinux.org/title/Power_management/Suspend_and_hibernate#Hibernation
+
+- Periodic SSD TRIM: https://wiki.archlinux.org/title/Solid_state_drive#Periodic_TRIM
+
+- BTRFS Balance: https://btrfs.readthedocs.io/en/latest/Balance.html
+
+- Secure boot w/ TPM: https://wiki.archlinux.org/title/Unified_Extensible_Firmware_Interface/Secure_Boot
 
 # Other neat features TODO
 
 - Remote unlocking of root: https://wiki.archlinux.org/title/Dm-crypt/Specialties#Remote_unlocking_of_root_(or_other)_partition
-
-
 
 # References
 
