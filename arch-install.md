@@ -125,7 +125,7 @@ cp root_keyfile.bin /mnt/keys
 
 ## Pacstrap on /mnt
 ```sh
-pacstrap /mnt base linux linux-firmware btrfs-progs cryptsetup networkmanager man-db man-pages amd-ucode nano reflector
+pacstrap /mnt base linux linux-firmware btrfs-progs cryptsetup networkmanager man-db man-pages amd-ucode nano reflector sudo
 ```
 
 ## Generate fstab
@@ -245,24 +245,13 @@ nano /etc/default/grub
 grub-mkconfig -o /boot/grub/grub.cfg
 ```
 
-## Install DE and related desktop software TODO
-```sh
-pacman -S plasma
-systemctl enable NetworkManager
-
-
-
-```
-
-## Add normal user
-```sh
-useradd -m -G wheel -s /bin/bash dem1se
-passwd dem1se
-```
-
 ## Reboot into install
 ```sh
 reboot
+
+# Check for errors
+systemctl --failed
+journalctl -p 3 -xb
 ```
 
 # Desktop Setup After Install
@@ -304,7 +293,7 @@ mount -o $sv_opts,subvol=@ /dev/mapper/root_crypt /mnt
 mount -o $sv_opts,subvol=@home /dev/mapper/root_crypt /mnt/home
 mount -o $sv_opts,subvol=@snapshots /dev/mapper/root_crypt /mnt/.snapshots
 mount -o $sv_opts,subvol=@var_log /dev/mapper/root_crypt /mnt/var/log
-mount -o subvol=@swap /dev/mapper/root_crypt /mnt/swap
+# mount -o subvol=@swap /dev/mapper/root_crypt /mnt/swap
 
 mount /dev/nvme0n1p1 /mnt/esp
 
