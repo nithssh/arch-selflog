@@ -39,7 +39,6 @@ https://wiki.archlinux.org/title/Pacman#Enabling_parallel_downloads
 Uncomment:
 - `ParallelDownloads`
 - `Color`
-- `ILoveCandy`
 - `mutilib`
 ```sh
 nano /etc/pacman.conf
@@ -58,11 +57,13 @@ pacman -S nvidia
 ## Install DE with Wayland
 ```sh
 pacman -S plasma plasma-wayland-session sddm
+# fck it lets install everything
+# pacman -S kde-applications
 systemctl enable sddm.service
 systemctl start sddm.service
-
-# TODO install nvidia_DRM
 ```
+
+TODO install nvidia_DRM
 
 ## Look into Plymouth
 
@@ -70,7 +71,9 @@ systemctl start sddm.service
 https://wiki.archlinux.org/title/Domain_name_resolution#Privacy_and_security
 
 ## Setup SSHD and configure
+```sh
 
+```
 
 ## GRUB themes
 
