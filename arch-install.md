@@ -231,7 +231,8 @@ swapon /swap/swapfile
 echo "swap/swapfile none swap sw 0 0" >> /etc/fstab
 ```
 
-### (Optional) Enable Hibernation into swapfile
+### DEBUG (Optional) Enable Hibernation into swapfile
+Needs further work and testing
 ```sh
 btrfs inspect-internal map-swapfile -r /swap/swapfile
 
@@ -266,39 +267,31 @@ reboot
 
 # Desktop Setup After Install
 
-*See arch-customize.md*
+*See arch-postinstall.md*
 
 
-# Post install TODO
-- Snapper
-
+# Other Neat Features TODO
 - Suspend Support: https://wiki.archlinux.org/title/Power_management/Suspend_and_hibernate#Hibernation
 
-- Periodic SSD TRIM: https://wiki.archlinux.org/title/Solid_state_drive#Periodic_TRIM
-
-- BTRFS Balance: https://btrfs.readthedocs.io/en/latest/Balance.html
-
 - Secure boot w/ TPM: https://wiki.archlinux.org/title/Unified_Extensible_Firmware_Interface/Secure_Boot
-
-# Other neat features TODO
 
 - Remote unlocking of root: https://wiki.archlinux.org/title/Dm-crypt/Specialties#Remote_unlocking_of_root_(or_other)_partition
 
 # References
 
-[1] https://wiki.archlinux.org/title/Installation_guide
+- https://wiki.archlinux.org/title/Installation_guide
 
-[9] https://wiki.archlinux.org/title/Arch_boot_process
+- https://wiki.archlinux.org/title/Arch_boot_process
 
-[5] https://forum.level1techs.com/t/gkh-threadripper-3970x-setup-notes/156330
+- https://forum.level1techs.com/t/gkh-threadripper-3970x-setup-notes/156330
 
-[2] https://gitlab.com/Thawn/arch-encrypted
+- https://gitlab.com/Thawn/arch-encrypted
 
-[4] https://wiki.archlinux.org/title/Power_management/Suspend_and_hibernate#Hibernation_into_swap_file
+- https://wiki.archlinux.org/title/Power_management/Suspend_and_hibernate#Hibernation_into_swap_file
 
-[6] https://wiki.archlinux.org/title/dm-crypt/Device_encryption#Backup_and_restore
+- https://wiki.archlinux.org/title/dm-crypt/Device_encryption#Backup_and_restore
 
-[12] https://wiki.archlinux.org/title/Snapper#Suggested_filesystem_layout
+- https://wiki.archlinux.org/title/Snapper#Suggested_filesystem_layout
 
 # Debugging helper snippets
 ## remount all
