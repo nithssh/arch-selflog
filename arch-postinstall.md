@@ -77,13 +77,30 @@ GRUB_GFXPAYLOAD_LINUX=keep
 ```
 ## Setup `snapper`
 
+Based on: https://wiki.archlinux.org/title/Snapper#Configuration_of_snapper_and_mount_point
+
 ```sh
 pacman -S snapper grub-btrfs
 yay -S btrfs-assistant
+
+# Needed to let snapper make its snapshots folder
 umount /.snapshots
 rm -r /.snapshots
+
+# create the config
 snapper -c root create-config /
+
+# delete the subvolume that snapper created
+btrfs sub delete /.snapshots
+
+# make the folder manually
+mkdir /.snapshots
+
+# create mount the original subvol again
+mount -a # based on fstab
 ```
+
+Following this, use `btrfs-assistant` to make the first snapshot, and enable systemd units for timeline and cleanup
 
 ## Secure the DNS
 https://wiki.archlinux.org/title/Domain_name_resolution#Privacy_and_security
