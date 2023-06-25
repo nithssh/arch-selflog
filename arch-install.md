@@ -81,6 +81,7 @@ btrfs subvolume create /mnt/@          # to be mounted at /
 btrfs subvolume create /mnt/@home      # to be mounted at /home
 btrfs subvolume create /mnt/@snapshots # to be mounted at /.snapshots
 btrfs subvolume create /mnt/@var_log   # to be mounted at /var/log
+btrfs subvolume create /mnt/@swap      # to be mounted at /swap
 umount /mnt
 ```
 
@@ -99,7 +100,8 @@ mount -o $sv_opts,subvol=@snapshots /dev/mapper/root_crypt /mnt/.snapshots
 mkdir -p /mnt/var/log
 mount -o $sv_opts,subvol=@var_log /dev/mapper/root_crypt /mnt/var/log
 
-
+mkdir /mnt/swap
+mount -o $sv_opts,subvol=@swap /dev/mapper/root_crypt /mnt/swap
 ```
 
 #### Create exclusion subvolumes
@@ -223,16 +225,15 @@ grub-install --target=x86_64-efi --efi-directory=/esp --bootloader-id=ARCH-GRUB
 
 ## Setup Swapfile
 ```sh
-btrfs subvolume create /@swap
-mkdir /mnt/swap
-mount -o subvol=@swap /dev/mapper/root_crypt /mnt/swap
 btrfs filesystem mkswapfile --size 8G /swap/swapfile
 swapon /swap/swapfile
 echo "swap/swapfile none swap sw 0 0" >> /etc/fstab
 ```
 
-### DEBUG (Optional) Enable Hibernation into swapfile
-Needs further work and testing
+### (Optional) Enable Hibernation into swapfile
+
+https://wiki.archlinux.org/title/Power_management/Suspend_and_hibernate#Hibernation_into_swap_file
+
 ```sh
 btrfs inspect-internal map-swapfile -r /swap/swapfile
 
@@ -293,7 +294,6 @@ mount -o $sv_opts,subvol=@ /dev/mapper/root_crypt /mnt
 mount -o $sv_opts,subvol=@home /dev/mapper/root_crypt /mnt/home
 mount -o $sv_opts,subvol=@snapshots /dev/mapper/root_crypt /mnt/.snapshots
 mount -o $sv_opts,subvol=@var_log /dev/mapper/root_crypt /mnt/var/log
-# mount -o subvol=@swap /dev/mapper/root_crypt /mnt/swap
 
 mount /dev/nvme0n1p1 /mnt/esp
 

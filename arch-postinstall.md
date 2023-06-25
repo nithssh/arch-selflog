@@ -1,18 +1,17 @@
 # Post Install
 
 ## TODO
-- Snapper
-
 - Periodic SSD TRIM: https://wiki.archlinux.org/title/Solid_state_drive#Periodic_TRIM
 
 - BTRFS Balance: https://btrfs.readthedocs.io/en/latest/Balance.html
 
-## Setup the network
+## Enable network manager
 ```sh
 systemctl enable NetworkManager.service # Casing is important
 systemctl start NetworkManager.service
-ping archlinux.org
 ```
+
+## Install yay
 
 ## Add normal user
 ```sh
@@ -33,63 +32,93 @@ pacman -S reflector
 systemctl enable reflector.timer
 ```
 
-### Enable Parallel Downloads
-https://wiki.archlinux.org/title/Pacman#Enabling_parallel_downloads
+### Enable Parallel Downloads and `multilib`
 
-Uncomment:
+Uncomment the following lines:
 - `ParallelDownloads`
 - `Color`
-- `mutilib`
+- `mutilib` - for installing Steam and other gaming things
 ```sh
 nano /etc/pacman.conf
 ```
 
 ## Use `zsh`
+
+## Install Nvidia Propriertary Drivers
 ```sh
-TODO
+pacman -S nvidia nvidia-utils nvidia-settings
 ```
 
-## Install nvidia Drivers
-```sh
-pacman -S nvidia
-```
+run nviida-xconfig later
 
-## Install DE with Wayland
+## Desktop Environment
+Also need to use `sddm-git` AUR package, since 20.x version supports Wayland, while official release in the repo was 19.x at the time.
 ```sh
 pacman -S plasma plasma-wayland-session sddm
-# fck it lets install everything
-# pacman -S kde-applications
-systemctl enable sddm.service
-systemctl start sddm.service
+
+pacman -S kde-applications
+``` 
+
+`/etc/modprobe.d/nvidia.conf`
+```
+options nvidia-drm modeset=1 
+options nvidia NVreg_UsePageAttributeTable=1
 ```
 
-TODO install nvidia_DRM
+`mkinitcpio.conf`
+```
+MODULES=(nvidia nvidia_modeset nvidia_uvm nvidia_drm)
+```
 
-## Look into Plymouth
+`/etc/default/grub.conf`
+```
+GRUB_GFXMODE=1920x1080x32,1024x768x32,auto
+GRUB_GFXPAYLOAD_LINUX=keep
+```
+## Setup `snapper`
+
+```sh
+pacman -S snapper grub-btrfs
+yay -S btrfs-assistant
+umount /.snapshots
+rm -r /.snapshots
+snapper -c root create-config /
+```
 
 ## Secure the DNS
 https://wiki.archlinux.org/title/Domain_name_resolution#Privacy_and_security
 
-## Setup SSHD and configure
+## Enable bluetooth
 ```sh
-
+pacman -S bluez bluez-utils
+systemctl enable bluetooth.service
+systemctl start bluetooth.service
 ```
 
-## GRUB themes
 
-## Install linux-lts kernel as a backup option and setup grub multi option
 
-## paccache hooks
+## Setup SSHD and configure it
+
+## GRUB theme
+
+## pacman cache hooks
 https://wiki.archlinux.org/title/Pacman#Cleaning_the_package_cache
 
 ## CPU Scaling
 https://wiki.archlinux.org/title/CPU_frequency_scaling
-## My Applications
+## Some Applications
 - Steam
 - Firefox
 - KeepassXC
 
 
+## Other Things I did
+- Install PulseAudio
+- Wayland everything
+- Google drive setup
+- SDDM multimonitor
+- libratbag
+- Plymouth
 # References
 
 - https://wiki.archlinux.org/title/General_recommendations
