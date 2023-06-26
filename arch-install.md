@@ -161,9 +161,9 @@ passwd
 
 ## Generate keyfile for bootloader to decrypt `/boot` partition automatically at late userspace
 
-In this setup, this is needed to unlock /boot for the second time late userspace, since all devices are effectively unmounted when initramfs starts, causing everything to be remounted later in boot, and it is both undesirable and because the passphrase promt doesn't show the second time and the job ends up timing out (lol).
+In this setup, this is needed to unlock /boot for the second time late userspace, since all devices are effectively unmounted when initramfs starts, causing everything to be remounted later in boot, which is both undesirable, and required because the passphrase prompt doesn't show the second time and the job ends up timing out (lol).
 
-It is worth noting, that this is different from the reason other setups use keyfile for the /boot: in the setups where the /boot is within the (LUKS1 encrypted) root partition, the encrypted volume is unlocked when GRUB tries to access /boot, and then for a second time when the kernel tries to unlock the root.
+It is worth noting, that this is different from the reason other setups use keyfile for the /boot: in the setups where the /boot is within the (LUKS1 encrypted) root partition, the encrypted volume is unlocked when GRUB tries to access /boot, and then for a second time when the kernel tries to unlock the root. In that case, there is no need to use crypttab.
 
 The bootloader will still prompt for the passphrase once, before reaching the GRUB menu. But I believe it can be avoid with the use of TPM.
 
