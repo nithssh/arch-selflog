@@ -227,7 +227,7 @@ grub-install --target=x86_64-efi --efi-directory=/efi --bootloader-id=ARCH-GRUB
 ```sh
 btrfs filesystem mkswapfile --size 8G /swap/swapfile
 swapon /swap/swapfile
-echo "swap/swapfile none swap sw 0 0" >> /etc/fstab
+echo "/swap/swapfile none swap sw 0 0" >> /etc/fstab
 ```
 
 ### (Optional) Enable Hibernation into swapfile

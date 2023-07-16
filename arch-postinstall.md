@@ -57,6 +57,10 @@ Also need to use `sddm-git` AUR package, since 20.x version supports Wayland, wh
 pacman -S plasma plasma-wayland-session sddm
 
 pacman -S kde-applications
+pacman -Rns kde-games audiotube lokalize
+pacman -Rns $(pacman -Qgq kde-pim | grep -v kleopatra) # everything in PIM except kleopatra
+pacman -Rns $(pacman -Qgq kde-education | grep -v kmplot) 
+pacman -Rns $(pacman -Qsq telepathy)
 ``` 
 
 `/etc/modprobe.d/nvidia.conf`
@@ -104,6 +108,14 @@ Following this, use `btrfs-assistant` to make the first snapshot, and enable sys
 
 ## Secure the DNS
 https://wiki.archlinux.org/title/Domain_name_resolution#Privacy_and_security
+
+## Install pipewire
+
+```sh
+pacman -S pipewire pipewire-pulse
+```
+This should also help with bluetooth headsets
+
 
 ## Enable bluetooth
 ```sh
