@@ -35,7 +35,7 @@ I'm using a fresh 1000G nvme drive. Only using 600G for the root, since I plan t
 
 | Size | Type    | Partition |
 |------|---------|-----------|
-| 500M | EFI (1) | /esp      |
+| 500M | EFI (1) | /efi      |
 | 500M | ext4    | /boot     |
 | 600G | btrfs   | /         |
 
@@ -113,10 +113,10 @@ btrfs subvolume create /mnt/var/tmp
 btrfs subvolume create /mnt/srv
 ```
 
-### Mount /esp and /boot before generating fstab
+### Mount /efi and /boot before generating fstab
 ```sh
-mkdir /mnt/esp
-mount /dev/nvme0n1p1 /mnt/esp
+mkdir /mnt/efi
+mount /dev/nvme0n1p1 /mnt/efi
 
 mkdir /mnt/boot
 mount /dev/mapper/boot_crypt /mnt/boot
@@ -220,7 +220,7 @@ lsblk -f
 nano /etc/default/grub
 
 grub-mkconfig -o /boot/grub/grub.cfg
-grub-install --target=x86_64-efi --efi-directory=/esp --bootloader-id=ARCH-GRUB
+grub-install --target=x86_64-efi --efi-directory=/efi --bootloader-id=ARCH-GRUB
 ```
 
 ## Setup Swapfile
@@ -289,13 +289,12 @@ For when you need to remount everything to the archiso live env after rebooting 
 
 ```sh
 cryptsetup open /dev/nvme0n1p3 root_crypt
-export sv_opts="noatime,compress=zstd:1,space_cache=v2"
-mount -o $sv_opts,subvol=@ /dev/mapper/root_crypt /mnt
-mount -o $sv_opts,subvol=@home /dev/mapper/root_crypt /mnt/home
-mount -o $sv_opts,subvol=@snapshots /dev/mapper/root_crypt /mnt/.snapshots
-mount -o $sv_opts,subvol=@var_log /dev/mapper/root_crypt /mnt/var/log
+mount -o subvol=@ /dev/mapper/root_crypt /mnt
+mount -o subvol=@home /dev/mapper/root_crypt /mnt/home
+mount -o subvol=@snapshots /dev/mapper/root_crypt /mnt/.snapshots
+mount -o subvol=@var_log /dev/mapper/root_crypt /mnt/var/log
 
-mount /dev/nvme0n1p1 /mnt/esp
+mount /dev/nvme0n1p1 /mnt/efi
 
 cryptsetup open /dev/nvme0n1p2 boot_crypt
 mount /dev/mapper/boot_crypt /mnt/boot
