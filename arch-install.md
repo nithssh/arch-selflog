@@ -299,3 +299,14 @@ mount /dev/nvme0n1p1 /mnt/efi
 cryptsetup open /dev/nvme0n1p2 boot_crypt
 mount /dev/mapper/boot_crypt /mnt/boot
 ```
+
+```sh
+cryptsetup open /dev/nvme0n1p3 root_crypt
+mount -o subvol=@ /dev/mapper/root_crypt /mnt
+mount -o subvol=@home /dev/mapper/root_crypt /mnt/home
+mount -o subvol=@snapshots /dev/mapper/root_crypt /mnt/.snapshots
+mount -o subvol=@var_log /dev/mapper/root_crypt /mnt/var/log
+
+mount /dev/nvme0n1p1 /mnt/efi
+mount /dev/nvme0n1p2 /mnt/boot
+```
