@@ -58,8 +58,8 @@ mkfs.ext4 -L boot /dev/mapper/boot_crypt
 
 #### Generate the randomtext key for the root:
 ```sh
-dd bs=4096 count=1 if=/dev/random of=root_keyfile.bin iflag=fullblock
-chmod 600 root_keyfile.bin
+dd bs=4096 count=1 if=/dev/random of=root_keyfile.bin iflag=fullblock # be careful not to lose this file by restarting the install env
+chmod 600 root_keyfile.bin # remove read perms from others
 ```
 
 #### Do the luks and mkfs steps
@@ -67,7 +67,7 @@ chmod 600 root_keyfile.bin
 Letting the keyfile take the first key slot, this way the normal flow is faster.
 ```sh
 cryptsetup luksFormat --type luks2 /dev/nvme0n1p3 root_keyfile.bin
-# Adding a backup pass phrase. This will be in slot 1
+# Adding a backup pass phrase. This will be in slot 1, --key-file switch is to authenticate with current method before adding new one.
 cryptsetup luksAddKey --key-file=root_keyfile.bin /dev/nvme0n1p3
 
 cryptsetup open --key-file=root_keyfile.bin /dev/nvme0n1p3 root_crypt
@@ -121,13 +121,13 @@ mount /dev/nvme0n1p1 /mnt/efi
 mkdir /mnt/boot
 mount /dev/mapper/boot_crypt /mnt/boot
 
-mkdir /mnt/keys
-cp root_keyfile.bin /mnt/keys
+mkdir -p /mnt/etc/keys
+cp root_keyfile.bin /mnt/etc/keys
 ```
 
 ## Pacstrap on /mnt
 ```sh
-pacstrap /mnt base linux linux-firmware btrfs-progs cryptsetup networkmanager man-db man-pages amd-ucode nano reflector sudo
+pacstrap /mnt base linux linux-firmware btrfs-progs cryptsetup networkmanager man-db man-pages amd-ucode neovim reflector sudo
 ```
 
 ## Generate fstab
@@ -144,7 +144,7 @@ arch-chroot /mnt
 ## Set timezone, locale, and setup hostnames
 ```sh
 ln -sf /usr/share/zoneinfo/Asia/Kolkata /etc/localtime
-nano /etc/locale.gen # uncomment en_US line
+nvim /etc/locale.gen # uncomment en_US and en_IN lines
 locale-gen
 echo "LANG=en_US.UTF-8" > /etc/locale.conf
 
@@ -161,24 +161,24 @@ passwd
 
 ## Generate keyfile for bootloader to decrypt `/boot` partition automatically at late userspace
 
-In this setup, this is needed to unlock /boot for the second time late userspace, since all devices are effectively unmounted when initramfs starts, causing everything to be remounted later in boot, which is both undesirable, and required because the passphrase prompt doesn't show the second time and the job ends up timing out (lol).
+We needed to unlock the boot partition for the second time in late userspace. When the kernel mounts all the partitions in `/etc/fstab`, it would need to unlock the the boot partition luks volume, and promt for the password which is undesirable. This fix makes it so that the kernel has a key file that it can use to unlock the volume. I am unsure if you can make the system prompt for password when it attempts to unlock the boot partition for the second time, but it was not happening in my case by default, so this not just convenient, but also required from what I know.
 
-It is worth noting, that this is different from the reason other setups use keyfile for the /boot: in the setups where the /boot is within the (LUKS1 encrypted) root partition, the encrypted volume is unlocked when GRUB tries to access /boot, and then for a second time when the kernel tries to unlock the root. In that case, there is no need to use crypttab.
+It is worth noting that this is different from the reason other setups use keyfile for the /boot: in the setups where the /boot is within the (LUKS1 encrypted) root partition, the encrypted volume is unlocked when GRUB tries to access /boot, and then for a second time when the kernel tries to unlock the root. In that case, there is no need to use crypttab.
 
-The bootloader will still prompt for the passphrase once, before reaching the GRUB menu. But I believe it can be avoid with the use of TPM.
+The bootloader will still prompt for the passphrase once, before reaching the GRUB menu, which can be solved by using TPMs.
 
 ```sh
-dd bs=4096 count=1 if=/dev/random of=/keys/boot_keyfile.bin iflag=fullblock
-chmod 600 /keys/boot_keyfile.bin
+dd bs=4096 count=1 if=/dev/random of=/etc/keys/boot_keyfile.bin iflag=fullblock
+chmod 600 /etc/keys/boot_keyfile.bin
 chmod 600 /boot/initramfs-linux*
-cryptsetup luksAddKey /dev/nvme0n1p2 /keys/boot_keyfile.bin
+cryptsetup luksAddKey /dev/nvme0n1p2 /etc/keys/boot_keyfile.bin
 ```
 
 ### Add /boot to cryptab to auto unlock at late userspace
 
 ```sh
 echo "# Mount /dev/nvme0n1p2 (/boot parition) to /dev/mapper/boot_crypt using keyfile at /keys
-boot_crypt      /dev/nvme0n1p2  /keys/boot_keyfile.bin" >> /etc/crypttab
+boot_crypt      /dev/nvme0n1p2  /etc/keys/boot_keyfile.bin" >> /etc/crypttab
 
 cat /etc/crypttab # verify
 ```
@@ -187,17 +187,17 @@ fstab references this unlocked luks volume (boot_crypt) for mounting (by uuid).
 
 ## Setting up initramfs
 
-This will be used by the kernel to setup the temp ramfs, which can then switch to the real root.
+This will be used by the kernel to setup the temporary ramfs, which can then switch to the real root.
 
 ```sh
-nano /etc/mkinitcpio.conf
+nvim /etc/mkinitcpio.conf
 ```
 
 ### Things to edit in the mkinitcpio.conf
 ```sh
 BINARIES=(/usr/bin/btrfs)
-FILES=(/keys/root_keyfile.bin)
-HOOKS=(base udev keyboard autodetect keymap consolefont modconf block encrypt filesystems fsck)
+FILES=(/etc/keys/root_keyfile.bin)
+HOOKS=(base udev keyboard autodetect microcode keymap consolefont modconf block encrypt filesystems fsck)
 ```
 
 ```sh
@@ -209,15 +209,15 @@ mkinitcpio -P
 # Install grub
 pacman -S grub efibootmgr
 
-lsblk -f
+lsblk -f # or blkid
 
 # TODO add resume option
 # GRUB_ENABLE_CRYPTODISK=y
 # GRUB_PRELOAD_MODULES="part_gpt part_msdos luks" # add luks
 # Not sure if LABEL based methods worked properly, I didn't verify the grub.cfg
-# GRUB_CMDLINE_LINUX_DEFAULT="cryptdevice=LABEL=root:root_crypt:allow-discards cryptkey=rootfs:/keys/root_keyfile.bin rootflags=subvol=@"
-# GRUB_CMDLINE_LINUX_DEFAULT="cryptdevice=UUID=03d096e4-f4e0-4ce4-b690-09c94421ad85:root_crypt:allow-discards cryptkey=rootfs:/keys/root_keyfile.bin rootflags=subvol=@"
-nano /etc/default/grub
+# GRUB_CMDLINE_LINUX_DEFAULT="cryptdevice=LABEL=root:root_crypt:allow-discards cryptkey=rootfs:/etc/keys/root_keyfile.bin rootflags=subvol=@"
+# GRUB_CMDLINE_LINUX_DEFAULT="cryptdevice=UUID=03d096e4-f4e0-4ce4-b690-09c94421ad85:root_crypt:allow-discards cryptkey=rootfs:/etc/keys/root_keyfile.bin rootflags=subvol=@"
+nvim /etc/default/grub
 
 grub-mkconfig -o /boot/grub/grub.cfg
 grub-install --target=x86_64-efi --efi-directory=/efi --bootloader-id=ARCH-GRUB
@@ -225,7 +225,7 @@ grub-install --target=x86_64-efi --efi-directory=/efi --bootloader-id=ARCH-GRUB
 
 ## Setup Swapfile
 ```sh
-btrfs filesystem mkswapfile --size 8G /swap/swapfile
+btrfs filesystem mkswapfile --size 16G /swap/swapfile
 swapon /swap/swapfile
 echo "/swap/swapfile none swap sw 0 0" >> /etc/fstab
 ```
@@ -238,10 +238,10 @@ https://wiki.archlinux.org/title/Power_management/Suspend_and_hibernate#Hibernat
 btrfs inspect-internal map-swapfile -r /swap/swapfile
 
 # Add `resume` to HOOKS at: HOOKS=( ...filesystems resume fsck)
-nano /etc/mkinitcpio.conf
+nvim /etc/mkinitcpio.conf
 mkinitcpio -P
 
-nano /etc/default/grub
+nvim /etc/default/grub
 # add resume=UUID=swap_device_uuid and resume_offset=swap_file_offset, that you found in the first line above
 grub-mkconfig -o /boot/grub/grub.cfg
 ```

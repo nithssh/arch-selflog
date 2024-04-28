@@ -17,7 +17,7 @@ systemctl start NetworkManager.service
 ```sh
 useradd -m -G wheel -s /bin/bash dem1se
 passwd dem1se
-nano /etc/sudoers
+nvim /etc/sudoers
 # %wheel      ALL=(ALL:ALL) ALL
 ```
 
@@ -39,10 +39,16 @@ Uncomment the following lines:
 - `Color`
 - `mutilib` - for installing Steam and other gaming things
 ```sh
-nano /etc/pacman.conf
+nvim /etc/pacman.conf
 ```
 
 ## Use `zsh`
+
+## AMD GPU
+
+```sh
+pacman -Syu mesa vulkan-radeon lib32-vulkan-radeon libva-mesa-driver lib32-libva-mesa-driver mesa-vdpau lib32-mesa-vdpau
+```
 
 ## Install Nvidia Propriertary Drivers
 ```sh
