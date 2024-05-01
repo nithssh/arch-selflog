@@ -110,6 +110,8 @@ mkdir -p /mnt/var/cache/pacman/
 btrfs subvolume create /mnt/var/cache/pacman/pkg
 btrfs subvolume create /mnt/var/abs
 btrfs subvolume create /mnt/var/tmp
+btrfs subvolume create /mnt/var/lib/mysql
+btrfs subvolume create /mnt/var/lib/docker
 btrfs subvolume create /mnt/srv
 ```
 
